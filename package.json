@@ -1,0 +1,12 @@
+{
+  "name": "DemoNode",
+  "version": "0.0.0",
+  "description": "",
+  "main": "server.coffee",
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "socket.io": "*",
+    "coffee-script": "*"
+  }
+}
