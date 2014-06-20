@@ -1,43 +1,60 @@
-app = require("http").createServer()
-
-io = require("socket.io")(app)
-
-app.listen 8080
-
-console.log "Server is listening at port 8080"
-
+WebSocketServer = require("ws").Server
+http = require("http")
+express = require("express")
+app = express()
+port = process.env.PORT or 5000
+app.use express.static(__dirname + "/")
+server = http.createServer(app)
+server.listen port
+console.log "http server listening on %d", port
+wss = new WebSocketServer(server: server)
+console.log "websocket server created"
 positions = {}
 
-io.configure ->
-  io.set 'transports', ['websocket', 'flashsocket', 'htmlfile', 'xhr-polling', 'jsonp-polling']
+wss.broadcast = (data) =>
+  for i of wss.clients
+    wss.clients[i].send data
 
-io.sockets.on "connection", (socket) ->
-  
-  socket.on "add_me", (name) ->
+wss.on "connection", (ws) =>
+  ws.on "message", (message) =>
+    p = JSON.parse message
+    switch p.e
+      when "add_me"
+        name = p.d['name']
+        id = p.d['id']
+        ws.id = id
+        ws.send JSON.stringify
+          e: "current_state"
+          d: positions
+        positions[id] = 
+          name: name
+        wss.broadcast JSON.stringify
+          e: "new_client"
+          d:
+            id: id
+            name: name
+        wss.broadcast JSON.stringify
+          e: "message"
+          d: "#{name} has just joined."
+      
+      when "update_my_position"
+        id = p.d['id']
+        position = p.d['position']
+        positions[id].translate = position.translate
+        positions[id].rotate = position.rotate
+        positions[id].index = position.index
+        wss.broadcast JSON.stringify
+          e: "update_client_position"
+          d:
+            id: id
+            position: position
         
-    socket.name = name
-
-    socket.emit "current_state", positions
-    
-    positions[socket.id] = 
-      name: name
-
-    socket.broadcast.emit "new_client", socket.id, name
-
-    io.sockets.emit "message", "#{name} has just joined."
-
-  socket.on "update_my_position", (position) ->
-
-    positions[socket.id].translate = position.translate
-    positions[socket.id].rotate = position.rotate
-    positions[socket.id].index = position.index
-
-    socket.broadcast.emit "update_client_position", socket.id, position
-
-  socket.on "disconnect", ->
-    
-    delete positions[socket.id]
-
-    io.sockets.emit "client_left", socket.id
-
-    io.sockets.emit "message", "#{socket.name} has just left."
+  ws.on "close", =>
+    name = positions[ws.id].name
+    delete positions[ws.id]
+    wss.broadcast JSON.stringify
+      e: "client_left"
+      d: ws.id
+    wss.broadcast JSON.stringify
+      e: "message"
+      d: "#{name} has just left."

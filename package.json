@@ -1,12 +1,13 @@
 {
   "name": "DemoNode",
-  "version": "0.0.0",
-  "description": "",
-  "main": "server.coffee",
-  "author": "",
-  "license": "ISC",
+  "version": "0.0.1",
   "dependencies": {
-    "socket.io": "*",
+    "ws": "0.4.x",
+    "express": "3.x",
     "coffee-script": "*"
+  },
+  "engines": {
+    "node": "0.10.x",
+    "npm": "1.2.x"
   }
 }
